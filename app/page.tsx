@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 type PaletteColor = [number, number, number];
-// CODE GOES HERE
+import { getColorSync, getPaletteSync, getSwatches } from 'colorthief';
+import { createWorker } from "tesseract.js";
 
 const SHORTCUTS = [
   {
@@ -117,17 +118,35 @@ export default function Home() {
   }
 
   async function extractPalette(image: HTMLImageElement) {
+    const colors = getPaletteSync(image, { colorCount: 6 });
+    const dominant = getColorSync(image);
+
+    const output = {
+      colors: colors?.map((color) => color.array()) ?? [],
+      dominant: dominant?.array() ?? null,
+    };
 
     // CODE GOES HERE
-    setPaletteStatus(`Colours extracted: `+imageUrl.length);
+    setPaletteStatus(`Colours extracted: ` + JSON.stringify(output));
     setDominantColor([128, 64, 64]);
     setPalette([[128, 64, 64]]);
 
   }
 
   async function recognizeText(image: HTMLImageElement) {
-    // CODE GOES HERE
-    setTextResult(`Text extracted: `+imageUrl.length);
+    const worker = await createWorker("eng");
+
+    try {
+      const {
+        data: { text },
+      } = await worker.recognize(image);
+
+      setTextResult(`Text extracted: ` + text);
+
+      return text;
+    } finally {
+      await worker.terminate();
+    }
   }
 
   async function analyzeVision({
@@ -138,124 +157,124 @@ export default function Home() {
     base64Content?: string | null;
   }) {
     // CODE GOES HERE
-    setVisionResult(`Vision extracted: `+imageUrl.length);
+    setVisionResult(`Vision extracted: ` + imageUrl.length);
   }
 
-  return (
-    <div className="flex flex-1 justify-center px-4 py-10 font-sans text-foreground sm:px-6 lg:px-8">
-      <div className="w-full max-w-6xl rounded-[2rem] border border-black/10 bg-white/70 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
-        <div className="space-y-8 grid gap-6 lg:grid-cols-2">
-          <section className="space-y-4">
-            <div className="space-y-1 text-center">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-black/45">
-                Interactive Demo
-              </p>
-              <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
-                Computer Vision 👀
-              </h1>
-            </div>
+    return (
+      <div className="flex flex-1 justify-center px-4 py-10 font-sans text-foreground sm:px-6 lg:px-8">
+        <div className="w-full max-w-6xl rounded-[2rem] border border-black/10 bg-white/70 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
+          <div className="space-y-8 grid gap-6 lg:grid-cols-2">
+            <section className="space-y-4">
+              <div className="space-y-1 text-center">
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-black/45">
+                  Interactive Demo
+                </p>
+                <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+                  Computer Vision 👀
+                </h1>
+              </div>
 
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-black/55 text-center">
-                Image
-              </h4>
-              {imageUrl != "" &&
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-black/55 text-center">
+                  Image
+                </h4>
+                {imageUrl != "" &&
 
-                <div
-                  ref={imageContainerRef}
-                  className="relative overflow-hidden rounded-2xl border border-black/10 bg-stone-100 shadow-sm w-[33%] mx-auto"
-                >
-                  <img
-                    id="image"
-                    ref={imgRef}
-                    src={imageUrl}
-                    className="block w-full"
-                    crossOrigin="anonymous"
-                    // style={{ maxHeight: 500 }}
-                    alt="Selected source"
-                    onLoad={handleImageLoad}
-                    onError={handleImageError}
-                  />
-                </div>
-              }
-
-              <input
-                id="url"
-                className="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm text-black shadow-sm outline-none transition focus:border-black/30 focus:ring-4 focus:ring-amber-200/60"
-                value={imageUrl}
-                onChange={(event) => setImageUrl(event.target.value)}
-              />
-
-              <div id="shortcut" className="flex flex-wrap gap-2">
-                {SHORTCUTS.map((shortcut) => (
-                  <button
-                    key={shortcut.label}
-                    data-url={shortcut.url}
-                    className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-black/80"
-                    type="button"
-                    onClick={() => handleShortcut(shortcut.url)}
+                  <div
+                    ref={imageContainerRef}
+                    className="relative overflow-hidden rounded-2xl border border-black/10 bg-stone-100 shadow-sm w-[33%] mx-auto"
                   >
-                    {shortcut.label}
-                  </button>
-                ))}
+                    <img
+                      id="image"
+                      ref={imgRef}
+                      src={imageUrl}
+                      className="block w-full"
+                      crossOrigin="anonymous"
+                      // style={{ maxHeight: 500 }}
+                      alt="Selected source"
+                      onLoad={handleImageLoad}
+                      onError={handleImageError}
+                    />
+                  </div>
+                }
+
+                <input
+                  id="url"
+                  className="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm text-black shadow-sm outline-none transition focus:border-black/30 focus:ring-4 focus:ring-amber-200/60"
+                  value={imageUrl}
+                  onChange={(event) => setImageUrl(event.target.value)}
+                />
+
+                <div id="shortcut" className="flex flex-wrap gap-2">
+                  {SHORTCUTS.map((shortcut) => (
+                    <button
+                      key={shortcut.label}
+                      data-url={shortcut.url}
+                      className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-black/80"
+                      type="button"
+                      onClick={() => handleShortcut(shortcut.url)}
+                    >
+                      {shortcut.label}
+                    </button>
+                  ))}
+                </div>
+
+
+                <input
+                  id="local-image"
+                  className="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm text-black shadow-sm outline-none file:mr-4 file:rounded-full file:border-0 file:bg-black file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-black/80"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLocalImage}
+                />
+
+
               </div>
+            </section>
 
 
-              <input
-                id="local-image"
-                className="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm text-black shadow-sm outline-none file:mr-4 file:rounded-full file:border-0 file:bg-black file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-black/80"
-                type="file"
-                accept="image/*"
-                onChange={handleLocalImage}
-              />
 
+            <div className="space-y-4">
 
+              <section className="space-y-3">
+                <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-black/55">
+                  Colour Palette
+                </h4>
+                <div
+                  id="palette"
+                  className="flex min-h-14 flex-wrap items-center gap-2 rounded-2xl border border-dashed border-black/10 bg-white/60 p-4 overflow-hidden text-black"
+                >
+                  {paletteStatus}
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-black/55">
+                  Text
+                </h4>
+                <div
+                  id="text"
+                  className="min-h-48 whitespace-pre-wrap rounded-2xl border border-black/10 bg-white/60 p-4 text-sm leading-6 text-black/75 shadow-sm"
+                >
+                  {textResult}
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-black/55">
+                  Cloud Vision
+                </h4>
+                <pre
+                  id="vision"
+                  className="min-h-48 overflow-x-auto whitespace-pre-wrap rounded-2xl border border-black/10 bg-slate-950 p-4 font-mono text-xs leading-6 text-slate-100 shadow-sm"
+                >
+                  {visionResult}
+                </pre>
+              </section>
             </div>
-          </section>
-
-
-
-          <div className="space-y-4">
-
-            <section className="space-y-3">
-              <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-black/55">
-                Colour Palette
-              </h4>
-              <div
-                id="palette"
-                className="flex min-h-14 flex-wrap items-center gap-2 rounded-2xl border border-dashed border-black/10 bg-white/60 p-4 overflow-hidden"
-              >
-                {paletteStatus}
-              </div>
-            </section>
-
-            <section className="space-y-3">
-              <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-black/55">
-                Text
-              </h4>
-              <div
-                id="text"
-                className="min-h-48 whitespace-pre-wrap rounded-2xl border border-black/10 bg-white/60 p-4 text-sm leading-6 text-black/75 shadow-sm"
-              >
-                {textResult}
-              </div>
-            </section>
-
-            <section className="space-y-3">
-              <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-black/55">
-                Cloud Vision
-              </h4>
-              <pre
-                id="vision"
-                className="min-h-48 overflow-x-auto whitespace-pre-wrap rounded-2xl border border-black/10 bg-slate-950 p-4 font-mono text-xs leading-6 text-slate-100 shadow-sm"
-              >
-                {visionResult}
-              </pre>
-            </section>
           </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
